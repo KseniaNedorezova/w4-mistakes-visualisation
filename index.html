@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Городской кочевник — Анализ заказов</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/vue@3.4.27/dist/vue.global.prod.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+</head>
+<body>
+<div id="app">
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1>Городской кочевник</h1>
+      <p>Анализ заказов — только доставленные</p>
+    </div>
+    <div class="filter">
+      <label>Категория:</label>
+      <select v-model="selectedCategory">
+        <option value="">Все категории</option>
+        <option v-for="c in allCategories" :key="c" :value="c">{{ c }}</option>
+      </select>
+      <button v-if="selectedCategory" class="btn-reset" @click="selectedCategory=''">Сбросить</button>
+    </div>
+  </div>
+
+  <!-- Metrics -->
+  <div class="metrics">
+    <div class="metric-card c2">
+      <div class="metric-label">Количество заказов</div>
+      <div class="metric-value">{{ fmt(currentMetrics.orders) }}</div>
+      <div class="metric-sub">за последний месяц: {{ lastMonth.orders }}</div>
+      <div class="sparkline-wrap"><svg id="spark-orders"></svg></div>
+    </div>
+    <div class="metric-card c1">
+      <div class="metric-label">Сумма трат, ₽</div>
+      <div class="metric-value">{{ fmt(currentMetrics.spend) }}</div>
+      <div class="metric-sub">за последний месяц: {{ fmt(lastMonth.spend) }} ₽</div>
+      <div class="sparkline-wrap"><svg id="spark-spend"></svg></div>
+    </div>
+    <div class="metric-card c3">
+      <div class="metric-label">Средняя скидка, %</div>
+      <div class="metric-value">{{ currentMetrics.avgDiscount }}%</div>
+      <div class="metric-sub">за последний месяц: {{ lastMonth.avg_discount }}%</div>
+      <div class="sparkline-wrap"><svg id="spark-discount"></svg></div>
+    </div>
+  </div>
+
+  <!-- Two charts side by side -->
+  <div class="charts-row">
+    <div class="chart-card chart-card--wide">
+      <div class="section-title">Динамика трат и количества заказов {{ selectedCategory ? '— ' + selectedCategory : '' }}</div>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#FF3D64"></div>Заказы, шт</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#4DA2F1"></div>Траты (₽)</div>
+      </div>
+      <div class="chart-area"><svg id="timeline-chart"></svg></div>
+    </div>
+    <div class="chart-card chart-card--narrow">
+      <div class="section-title">Траты по категориям</div>
+      <div class="chart-area"><svg id="category-bar-chart"></svg></div>
+    </div>
+  </div>
+
+  <!-- Top items — combined chart + gallery -->
+  <div class="chart-card">
+    <div class="section-title">Топ товаров {{ selectedCategory ? '— ' + selectedCategory : '' }}</div>
+    <div class="chart-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#6B57D2"></div>Количество (шт)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#02B8A3"></div>Сумма (₽)</div>
+    </div>
+    <div id="items-combined"></div>
+  </div>
+
+  <!-- Tooltip modal -->
+  <div v-if="tooltipItem" class="tooltip-overlay" @click.self="tooltipItem=null">
+    <div class="tooltip-box">
+      <button class="tooltip-close" @click="tooltipItem=null">&times;</button>
+      <div class="tooltip-header">
+        <img :src="'items/' + tooltipItem.image" @error="$event.target.style.display='none'">
+        <div class="info">
+          <h3>{{ tooltipItem['Название позиции'] }}</h3>
+          <div class="cat">{{ tooltipItem.category }}</div>
+        </div>
+      </div>
+      <div class="tooltip-stats">
+        <div class="tooltip-stat">
+          <div class="label">Куплено</div>
+          <div class="val">{{ tooltipItem.total_qty }}</div>
+        </div>
+        <div class="tooltip-stat">
+          <div class="label">Потрачено</div>
+          <div class="val">{{ fmtK(tooltipItem.total_spend) }}</div>
+        </div>
+        <div class="tooltip-stat">
+          <div class="label">Ср. цена</div>
+          <div class="val">{{ tooltipItem.avg_price }}₽</div>
+        </div>
+      </div>
+      <div v-if="tooltipItem.priceHist && tooltipItem.priceHist.length>1">
+        <div class="tooltip-price-title">Динамика цены</div>
+        <div class="tooltip-price-chart"><svg id="price-history-chart"></svg></div>
+      </div>
+      <div v-else style="color:var(--muted);font-size:12px;text-align:center;">
+        Мин: {{ tooltipItem.min_price }}₽ · Макс: {{ tooltipItem.max_price }}₽
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
